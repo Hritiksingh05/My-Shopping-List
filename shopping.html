@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="shoppingApp">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shopping List Manager 🛒</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 600px;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 30px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      color: white;
+      animation: fadeIn 1s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1 {
+      text-align: center;
+      font-weight: 600;
+      margin-bottom: 25px;
+      color: #fff;
+      letter-spacing: 1px;
+    }
+
+    form {
+      display: flex;
+      margin-bottom: 20px;
+      gap: 10px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 8px;
+      outline: none;
+      font-size: 15px;
+    }
+
+    button {
+      border: none;
+      padding: 10px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: 0.3s;
+    }
+
+    .add-button {
+      background-color: #4caf50;
+      color: white;
+    }
+    .add-button:hover { background-color: #45a049; }
+
+    .shopping-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .shopping-list li {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 12px 15px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: transform 0.3s ease, background 0.3s ease;
+      animation: fadeSlide 0.4s ease;
+    }
+
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .shopping-list li:hover {
+      transform: scale(1.02);
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .purchased span {
+      text-decoration: line-through;
+      color: #b5ffd1;
+    }
+
+    .action-btns button {
+      margin-left: 5px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .remove-button { background-color: #e74c3c; color: #fff; }
+    .toggle-button { background-color: #3498db; color: #fff; }
+    .clear-button {
+      background-color: #ff6b6b;
+      width: 100%;
+      margin-top: 15px;
+      color: white;
+    }
+    .clear-button:hover { background-color: #ff4d4d; }
+
+    .summary {
+      text-align: center;
+      margin-bottom: 15px;
+      font-weight: 500;
+      color: #fff;
+    }
+
+    .search-box {
+      width: 100%;
+      margin-bottom: 15px;
+    }
+    .search-box input {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      outline: none;
+    }
+
+    @media (max-width: 600px) {
+      .container { padding: 20px; }
+      form { flex-direction: column; }
+      .add-button { width: 100%; }
+    }
+  </style>
+</head>
+<body ng-controller="ShoppingController">
+  <div class="container">
+    <h1>🛍️ My Shopping List</h1>
+
+    <!-- Add Item -->
+    <form ng-submit="addItem()">
+      <input type="text" ng-model="newItem" placeholder="Add a new item..." autofocus required>
+      <button type="submit" class="add-button">➕ Add</button>
+    </form>
+
+    <!-- Search Filter -->
+    <div class="search-box">
+      <input type="text" ng-model="searchQuery" placeholder="🔍 Search items...">
+    </div>
+
+    <!-- Summary -->
+    <p class="summary">
+      🧾 Items left to buy: {{ remainingItems() }} / {{ shoppingItems.length }}
+    </p>
+
+    <!-- Shopping List -->
+    <ul class="shopping-list">
+      <li ng-repeat="item in shoppingItems | filter:searchQuery" ng-class="{purchased: item.purchased}">
+        <span>{{ item.name }}</span>
+        <div class="action-btns">
+          <button class="toggle-button" ng-click="togglePurchased(item)">
+            {{ item.purchased ? "Undo" : "Bought" }}
+          </button>
+          <button class="remove-button" ng-click="removeItem($index)">❌</button>
+        </div>
+      </li>
+    </ul>
+
+    <button class="clear-button" ng-click="clearAll()" ng-show="shoppingItems.length > 0">
+      🧹 Clear All
+    </button>
+  </div>
+
+  <script>
+    var app = angular.module('shoppingApp', []);
+    app.controller('ShoppingController', function($scope) {
+      $scope.shoppingItems = JSON.parse(localStorage.getItem('shoppingList')) || [
+        { name: "Milk", purchased: false },
+        { name: "Bread", purchased: false },
+        { name: "Eggs", purchased: false },
+        { name: "Butter", purchased: false }
+      ];
+
+      function saveList() {
+        localStorage.setItem('shoppingList', JSON.stringify($scope.shoppingItems));
+      }
+
+      $scope.addItem = function() {
+        if ($scope.newItem) {
+          $scope.shoppingItems.push({ name: $scope.newItem, purchased: false });
+          $scope.newItem = "";
+          saveList();
+        }
+      };
+
+      $scope.removeItem = function(index) {
+        $scope.shoppingItems.splice(index, 1);
+        saveList();
+      };
+
+      $scope.togglePurchased = function(item) {
+        item.purchased = !item.purchased;
+        saveList();
+      };
+
+      $scope.clearAll = function() {
+        if (confirm("Clear entire list?")) {
+          $scope.shoppingItems = [];
+          saveList();
+        }
+      };
+
+      $scope.remainingItems = function() {
+        return $scope.shoppingItems.filter(i => !i.purchased).length;
+      };
+    });
+  </script>
+</body>
+</html>
